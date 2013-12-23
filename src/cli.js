@@ -8,6 +8,7 @@ var minimatch   = require("minimatch");
 var htmlparser  = require("htmlparser2");
 var JSHINT      = require("./jshint.js").JSHINT;
 var defReporter = require("./reporters/default").reporter;
+var transform   = require("react-tools").transform;
 
 var OPTIONS = {
 	"config": ["c", "Custom configuration file", "string", false ],
@@ -334,6 +335,27 @@ function lint(code, results, config, data, file) {
 	var globals;
 	var lintData;
 	var buffer = [];
+  var parseError = false;
+
+  try {
+      code = transform(code);
+    } catch (e) {
+    parseError = true;
+    console.log('parse error ...', e);
+    results.push({
+        file: file,
+        error: {
+          id: '(error)',
+          code: 'E041',
+          scope: '(main)',
+          raw: e.description,
+          evidence: e.description,
+          line: e.lineNumber,
+          character: e.column,
+          reason: e.description
+        }
+      });
+    }    
 
 	config = config || {};
 	config = JSON.parse(JSON.stringify(config));
@@ -359,7 +381,7 @@ function lint(code, results, config, data, file) {
 
 	if (!JSHINT(buffer, config, globals)) {
 		JSHINT.errors.forEach(function (err) {
-			if (err) {
+			if (err && !parseError) {
 				results.push({ file: file || "stdin", error: err });
 			}
 		});
